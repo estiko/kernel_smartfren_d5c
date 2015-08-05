@@ -38,13 +38,6 @@
 #include <linux/sm_event.h>
 #endif
 
-
-
-#ifdef CONFIG_FTS_USB_NOTIFY
-extern int Ft5x0x_ts_notifier_call_chain(unsigned long val);
-#endif
-
-
 #define	BATTERY_RPC_PROG		0x30000089
 #define	BATTERY_RPC_VER_5_1		0x00050001
 
@@ -74,14 +67,7 @@ extern int Ft5x0x_ts_notifier_call_chain(unsigned long val);
 
 #define	TEMPERATURE_HOT			350
 #define	TEMPERATURE_COLD		50
-static struct wake_lock charger_wake_lock;
-//The rpc occur anytime ,so ,we must make sure that the batt driver already initialized
-static int wl_initialized = 0;
-static int  charger_wake_lock_flag = 0;
-static u32  msm_batt_capacity_first_update = 3;
-static u32  msm_batt_volt_full_num = 0;
-static u32  msm_batt_capa_full_num = 0;
-static u32  msm_batt_capa_99_num = 0;
+
 struct msm_battery_info {
 	struct msm_rpc_endpoint *charger_endpoint;
 	struct msm_rpc_client *battery_client;
@@ -109,6 +95,7 @@ struct msm_battery_info {
 	struct delayed_work battery_work;
 	struct mutex update_mutex;
 	struct wake_lock charger_cb_wake_lock;
+	struct wake_lock charging_wake_lock;
 
 	s32 charger_handler;
 	s32 battery_handler;
@@ -138,6 +125,7 @@ struct msm_battery_info {
 
 	u32 psy_status;
 	u32 psy_health;
+    u32 battery_current; 
 };
 
 static struct msm_battery_info msm_battery_info = {
@@ -155,6 +143,7 @@ static struct msm_battery_info msm_battery_info = {
 	.is_charging_failed = false,
 	.psy_status = POWER_SUPPLY_STATUS_DISCHARGING,
 	.psy_health = POWER_SUPPLY_HEALTH_GOOD,
+    .battery_current=700,         //Andy.Pan add for current
 };
 
 static enum power_supply_property msm_charger_psy_properties[] = {
@@ -233,6 +222,7 @@ static enum power_supply_property msm_battery_psy_properties[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN,
 	POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+    POWER_SUPPLY_PROP_CURRENT_NOW,             //Andy.Pan add for current            
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_TEMP
 };
@@ -262,15 +252,18 @@ static int msm_battery_psy_get_property(struct power_supply *psy,
 		val->intval = msm_battery_info.voltage_min_design;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		val->intval = msm_battery_info.battery_voltage;
+		val->intval = msm_battery_info.battery_voltage * 1000; /*Modify voltage mv to uv */
 		break;
-	case POWER_SUPPLY_PROP_CAPACITY:
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+		val->intval = msm_battery_info.battery_current;       //Andy.Pan add for current
+		break;
+    case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = msm_battery_info.battery_capacity;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		val->intval = msm_battery_info.battery_temp;
 		break;
-	default:
+    default:
 		return -EINVAL;
 	}
 
@@ -390,7 +383,8 @@ void msm_battery_update_psy_status(void)
 	u32 is_charging;
 	u32 is_charging_complete;
 	u32 is_charging_failed;
-
+    u32 battery_current;        //Andy.Pan add for current
+	u32 real_vol = 0;
 	bool is_awake = true;
 #ifdef CONFIG_MSM_SM_EVENT
 	sm_msm_battery_data_t battery_data;
@@ -419,6 +413,7 @@ void msm_battery_update_psy_status(void)
 		is_charging		= reply_charger.is_charging;
 		is_charging_complete	= reply_charger.is_charging_complete;
 		is_charging_failed	= reply_charger.is_charging_failed;
+		battery_current		= reply_charger.battery_capacity >> 20;   //Andy.Pan add for current
 	}
 	else
 	{
@@ -433,114 +428,13 @@ void msm_battery_update_psy_status(void)
 		is_charging		= reply_charger.is_charging;
 		is_charging_complete	= reply_charger.is_charging_complete;
 		is_charging_failed	= reply_charger.is_charging_failed;
-		//doumingming add for 100%-->99%  when plugging out USB ++
-		if(msm_batt_capacity_first_update >1)
+		real_vol = reply_charger.battery_voltage>>16;
+	    if(real_vol < 3400 && battery_voltage < 3500)
 		{
-		    msm_batt_capacity_first_update = msm_batt_capacity_first_update -1;
+			battery_capacity = 0;
 		}
-		else
-		{
-        		if((battery_capacity > msm_battery_info.battery_capacity) && (msm_battery_info.battery_capacity <99))
-        		{
-        		    battery_capacity = msm_battery_info.battery_capacity +1;
-        		}
-        		else if((battery_capacity < msm_battery_info.battery_capacity) && (msm_battery_info.battery_capacity >1))
-        		{
-        		    battery_capacity = msm_battery_info.battery_capacity -1;
-        		}
-		}
-//batt_capa = 100 if obtain 100 three times ++
-             if(((battery_capacity == 100) && (msm_batt_capa_full_num >=3)) ||(battery_capacity < 100))
-             {
-                msm_batt_capa_full_num = 0;
-             }
-             else if((battery_capacity == 100) && (msm_batt_capa_full_num <3) && (msm_batt_capacity_first_update ==1))
-             {
-                msm_batt_capa_full_num = msm_batt_capa_full_num +1;
-                battery_capacity = msm_battery_info.battery_capacity;
-             }
-//batt_capa = 100 if obtain 100 three times --
+        battery_current		= reply_charger.battery_capacity >> 20;   //Andy.Pan add for current
 
-
-		#ifdef CONFIG_HIGH_VOLTAGE_BATTERY
-//batt_capa = 99 from 100 if obtain 99 six times ++
-             if((battery_capacity < 100) && (msm_battery_info.battery_capacity == 100))
-             {
-                 if(battery_voltage >=4326)
-                 {
-                    battery_capacity = msm_battery_info.battery_capacity;
-                    msm_batt_capa_99_num = 0;
-                 }
-                 else
-                 {
-                    msm_batt_capa_99_num = msm_batt_capa_99_num +1;
-                 }
-                 if((msm_batt_capa_99_num >=6) || (is_charging == 1))
-                 {
-                    msm_batt_capa_99_num = 0;
-                 }
-                 else
-                 {
-                    battery_capacity = msm_battery_info.battery_capacity;
-                 }
-             }
-//batt_capa = 99 from 100 if obtain 99 six times --
-
-//          printk("doumingming: msm_batt_volt_full_num %d battery_voltage:%d\n", msm_batt_volt_full_num,battery_voltage);
-		if((battery_voltage >=4335) && (msm_battery_info.battery_capacity == 99) && (is_charging == 1))      //makes device 100% correctly and quickly
-		{
-        		msm_batt_volt_full_num = msm_batt_volt_full_num +1;      		
-        		if(msm_batt_volt_full_num >36)
-        		{
-                		battery_capacity = 100;
-                		msm_batt_volt_full_num = 0;
-//                		printk("doumingming: msm_batt_volt_full_num %d\n", msm_batt_volt_full_num);
-        		}
-		}
-		if(is_charging == 0)
-		msm_batt_volt_full_num =0;
-		if(((battery_voltage >=4326) ||(is_charging == 1)) && (msm_battery_info.battery_capacity == 100))
-		battery_capacity = msm_battery_info.battery_capacity;     //makes device be 100% more time
-		
-		#else   //common battery
-
-//batt_capa = 99 from 100 if obtain 99 six times ++
-             if((battery_capacity < 100) && (msm_battery_info.battery_capacity == 100))
-             {
-                 if(battery_voltage >=4180)
-                 {
-                    battery_capacity = msm_battery_info.battery_capacity;
-                    msm_batt_capa_99_num = 0;
-                 }
-                 else
-                 {
-                    msm_batt_capa_99_num = msm_batt_capa_99_num +1;
-                 }
-                 if((msm_batt_capa_99_num >=6) || (is_charging == 1))
-                 {
-                    msm_batt_capa_99_num = 0;
-                 }
-                 else
-                 {
-                    battery_capacity = msm_battery_info.battery_capacity;
-                 }
-             }
-//batt_capa = 99 from 100 if obtain 99 six times --
-		if((battery_voltage >=4199) && (msm_battery_info.battery_capacity == 99) && (is_charging == 1))      //makes device 100% correctly and quickly
-		{
-        		msm_batt_volt_full_num = msm_batt_volt_full_num +1;      		
-        		if(msm_batt_volt_full_num >36)   
-        		{
-                		battery_capacity = 100;
-                		msm_batt_volt_full_num = 0;
-        		}
-		}
-		if(is_charging == 0)
-		msm_batt_volt_full_num =0;
-		if(((battery_voltage >=4180) || (is_charging == 1)) && (msm_battery_info.battery_capacity == 100))
-		battery_capacity = msm_battery_info.battery_capacity;     //makes device be 100% more time
-		#endif
-		//doumingming add for 100%-->99%  when plugging out USB --
 	}
 #ifdef CONFIG_MSM_SM_EVENT
 		battery_data.charger_status = charger_status;
@@ -548,13 +442,6 @@ void msm_battery_update_psy_status(void)
 		battery_data.battery_temp = battery_temp;
 		sm_add_event (SM_POWER_EVENT|SM_POWER_EVENT_BATTERY_UPDATE, 0, 0, (void *)&battery_data, sizeof(battery_data));
 #endif
-
-//doumingming 20130407 add for static elect ++
-             if(battery_status == BATTERY_STATUS_NULL )
-             {
-                battery_status = BATTERY_STATUS_GOOD;
-             }
-//doumingming 20130407 add for static elect --
 
 	pr_debug("BATT: received, %d, %d, 0x%x; %d, %d, %d, %d; %d, %d, %d; %d, %d, %d\n",
 		  charger_status, charger_hardware, hide,
@@ -583,18 +470,9 @@ void msm_battery_update_psy_status(void)
 		if (msm_battery_info.charger_status == CHARGER_STATUS_NULL) {
 			pr_debug("BATT: start charging\n");
 			update_charger_type(charger_hardware);
-	
-    #ifdef CONFIG_FTS_USB_NOTIFY			
-			Ft5x0x_ts_notifier_call_chain(1);
-    #endif
-	
+			wake_lock(&msm_battery_info.charging_wake_lock);
 		} else if (charger_status == CHARGER_STATUS_NULL) {
 			pr_debug("BATT: end charging\n");
-	
-    #ifdef CONFIG_FTS_USB_NOTIFY			
-			Ft5x0x_ts_notifier_call_chain(0);
-    #endif
-	
 
 			if (msm_battery_info.current_charger_src & USB_CHG) {
 				pr_debug("BATT: usb pc charger removed\n");
@@ -609,6 +487,7 @@ void msm_battery_update_psy_status(void)
 
 			msm_battery_info.current_psy = &msm_psy_battery;
 			msm_battery_info.current_charger_src = 0;
+			wake_unlock(&msm_battery_info.charging_wake_lock);
 		} else {
 			pr_err("BATT: CAUTION: charger status change\n");
 		}
@@ -620,7 +499,7 @@ void msm_battery_update_psy_status(void)
 		update_charger_type(charger_hardware);
 	}
 
-	if (charger_status == CHARGER_STATUS_NULL) {
+	if (charger_status == CHARGER_STATUS_NULL || is_charging == 0) {
 		msm_battery_info.psy_status = POWER_SUPPLY_STATUS_DISCHARGING;
 	} else if (battery_status == BATTERY_STATUS_NULL) {
 		msm_battery_info.psy_status = POWER_SUPPLY_STATUS_UNKNOWN;
@@ -672,29 +551,7 @@ void msm_battery_update_psy_status(void)
 	msm_battery_info.is_charging		= is_charging;
 	msm_battery_info.is_charging_complete	= is_charging_complete;
 	msm_battery_info.is_charging_failed	= is_charging_failed;
-	if (charger_status != CHARGER_STATUS_NULL) 
-	{
-			printk("doumingming enter (charger_status != CHARGER_STATUS_NULL)\n");
-		if((0 == charger_wake_lock_flag )&&(wl_initialized))		
-		{		
-			wake_lock(&charger_wake_lock);		
-			charger_wake_lock_flag = 1;
-			printk("doumingming enter wake_lock(&charger_wake_lock)\n");
-		}			
-	}
-	else
-	{
-		if((1 == charger_wake_lock_flag )&&(wl_initialized))					
-		{					
-			wake_unlock(&charger_wake_lock);	
-
-			wake_lock_timeout(&charger_wake_lock, 3*HZ);
-
-			charger_wake_lock_flag =0;	
-			printk("enter wake_unlock(&charger_wake_lock)\n");
-		}
-	}
-	printk("doumingming charger_wake_lock_flag= %d\n",charger_wake_lock_flag);
+    msm_battery_info.battery_current    = battery_current;    //Andy.Pan add for current
 	if (msm_battery_info.current_psy) {
 		power_supply_changed(msm_battery_info.current_psy);
 	}
@@ -1179,7 +1036,7 @@ static int __devinit msm_battery_probe(struct platform_device *pdev)
 		return rc;
 	}
 	msm_battery_info.msm_psy_battery = &msm_psy_battery;
-    
+
 	msm_battery_info.current_psy = &msm_psy_battery;
 	msm_battery_info.current_charger_src = 0;
 	power_supply_changed(msm_battery_info.current_psy);
@@ -1230,6 +1087,8 @@ static int __devinit msm_battery_probe(struct platform_device *pdev)
 		return rc;
 	}
 
+	wake_lock_init(&msm_battery_info.charging_wake_lock, WAKE_LOCK_SUSPEND,
+		       "msm_charging");
 	wake_lock_init(&msm_battery_info.charger_cb_wake_lock, WAKE_LOCK_SUSPEND,
 		       "msm_charger_cb");
 
@@ -1336,16 +1195,13 @@ static int __init msm_battery_init(void)
 		pr_err("BATT: ERROR: %s, platform_driver_register, rc=%d\n",
 		       __func__, rc);
 	}
-	wake_lock_init(&charger_wake_lock, WAKE_LOCK_SUSPEND, "chg_event");
-	wl_initialized = 1;
+
 	pr_debug("BATT: %s, exit\n", __func__);
 	return 0;
 }
 
 static void __exit msm_battery_exit(void)
 {
-      	wl_initialized = 0;
-	wake_lock_destroy(&charger_wake_lock);
 	platform_driver_unregister(&msm_batt_driver);
 }
 
@@ -1357,3 +1213,4 @@ MODULE_AUTHOR("Kiran Kandi, Qualcomm Innovation Center, Inc.");
 MODULE_DESCRIPTION("Battery driver for Qualcomm MSM chipsets.");
 MODULE_VERSION("2.0");
 MODULE_ALIAS("platform:msm_battery");
+
