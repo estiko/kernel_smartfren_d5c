@@ -1,120 +1,428 @@
-#
-# Makefile for the touchscreen drivers.
-#
+CFLAGS_scm.o :=$(call as-instr,.arch_extension sec,-DREQUIRES_SEC=1)
 
-# Each configuration option enables a list of files.
+obj-y += io.o dma.o memory.o
+ifndef CONFIG_ARM_ARCH_TIMER
+obj-y += timer.o
+endif
+obj-y += clock.o clock-voter.o clock-dummy.o
+obj-y += modem_notifier.o subsystem_map.o
+obj-$(CONFIG_CPU_FREQ_MSM) += cpufreq.o
+obj-$(CONFIG_DEBUG_FS) += nohlt.o clock-debug.o
+obj-$(CONFIG_KEXEC) += msm_kexec.o
 
-wm97xx-ts-y := wm97xx-core.o
+obj-$(CONFIG_MSM_PROC_COMM) += proc_comm.o
+ifndef CONFIG_ARCH_MSM8X60
+	obj-$(CONFIG_MSM_PROC_COMM) += clock-pcom.o
+	obj-$(CONFIG_MSM_PROC_COMM) += vreg.o mpp.o
+	ifdef CONFIG_MSM_PROC_COMM
+ifndef CONFIG_ARCH_FSM9XXX
+		obj-$(CONFIG_REGULATOR) += footswitch-pcom.o
+endif
+		obj-$(CONFIG_DEBUG_FS) += pmic_debugfs.o
+	endif
+endif
 
-obj-$(CONFIG_TOUCHSCREEN_88PM860X)	+= 88pm860x-ts.o
-obj-$(CONFIG_TOUCHSCREEN_AD7877)	+= ad7877.o
-obj-$(CONFIG_TOUCHSCREEN_AD7879)	+= ad7879.o
-obj-$(CONFIG_TOUCHSCREEN_AD7879_I2C)	+= ad7879-i2c.o
-obj-$(CONFIG_TOUCHSCREEN_AD7879_SPI)	+= ad7879-spi.o
-obj-$(CONFIG_TOUCHSCREEN_ADS7846)	+= ads7846.o
-obj-$(CONFIG_TOUCHSCREEN_ATMEL_MAXTOUCH)	+= atmel_maxtouch.o
-obj-$(CONFIG_TOUCHSCREEN_ATMEL_MXT)	+= atmel_mxt_ts.o
-obj-$(CONFIG_TOUCHSCREEN_ATMEL_TSADCC)	+= atmel_tsadcc.o
-obj-$(CONFIG_TOUCHSCREEN_AUO_PIXCIR)	+= auo-pixcir-ts.o
-obj-$(CONFIG_TOUCHSCREEN_BITSY)		+= h3600_ts_input.o
-obj-$(CONFIG_TOUCHSCREEN_BU21013)       += bu21013_ts.o
-obj-$(CONFIG_TOUCHSCREEN_CYPRESS_TMG)	+= cy8c_tmg_ts.o
-obj-$(CONFIG_TOUCHSCREEN_BU21013)	+= bu21013_ts.o
-obj-$(CONFIG_TOUCHSCREEN_CY8CTMG110)	+= cy8ctmg110_ts.o
-obj-$(CONFIG_TOUCHSCREEN_CYTTSP_CORE)	+= cyttsp_core.o
-obj-$(CONFIG_TOUCHSCREEN_CYTTSP_I2C)	+= cyttsp_i2c.o
-obj-$(CONFIG_TOUCHSCREEN_CYTTSP_SPI)	+= cyttsp_spi.o
-obj-$(CONFIG_TOUCHSCREEN_DA9034)	+= da9034-ts.o
-obj-$(CONFIG_TOUCHSCREEN_DYNAPRO)	+= dynapro.o
-obj-$(CONFIG_TOUCHSCREEN_HAMPSHIRE)	+= hampshire.o
-obj-$(CONFIG_TOUCHSCREEN_GUNZE)		+= gunze.o
-obj-$(CONFIG_TOUCHSCREEN_EETI)		+= eeti_ts.o
-obj-$(CONFIG_TOUCHSCREEN_ELAN_I2C_8232) += elan8232_i2c.o
-obj-$(CONFIG_TOUCHSCREEN_ELO)		+= elo.o
-obj-$(CONFIG_TOUCHSCREEN_EGALAX)	+= egalax_ts.o
-obj-$(CONFIG_TOUCHSCREEN_FUJITSU)	+= fujitsu_ts.o
-obj-$(CONFIG_TOUCHSCREEN_ILI210X)	+= ili210x.o
-obj-$(CONFIG_TOUCHSCREEN_INEXIO)	+= inexio.o
-obj-$(CONFIG_TOUCHSCREEN_INTEL_MID)	+= intel-mid-touch.o
-obj-$(CONFIG_TOUCHSCREEN_LPC32XX)	+= lpc32xx_ts.o
-obj-$(CONFIG_TOUCHSCREEN_MAX11801)	+= max11801_ts.o
-obj-$(CONFIG_TOUCHSCREEN_MC13783)	+= mc13783_ts.o
-obj-$(CONFIG_TOUCHSCREEN_MCS5000)	+= mcs5000_ts.o
-obj-$(CONFIG_TOUCHSCREEN_MIGOR)		+= migor_ts.o
-obj-$(CONFIG_TOUCHSCREEN_MTOUCH)	+= mtouch.o
-obj-$(CONFIG_TOUCHSCREEN_MK712)		+= mk712.o
-obj-$(CONFIG_TOUCHSCREEN_MSM)		+= msm_ts.o
-obj-$(CONFIG_TOUCHSCREEN_HP600)		+= hp680_ts_input.o
-obj-$(CONFIG_TOUCHSCREEN_HP7XX)		+= jornada720_ts.o
-obj-$(CONFIG_TOUCHSCREEN_HTCPEN)	+= htcpen.o
-obj-$(CONFIG_TOUCHSCREEN_USB_COMPOSITE)	+= usbtouchscreen.o
-obj-$(CONFIG_TOUCHSCREEN_PCAP)		+= pcap_ts.o
-obj-$(CONFIG_TOUCHSCREEN_PENMOUNT)	+= penmount.o
-obj-$(CONFIG_TOUCHSCREEN_PIXCIR)	+= pixcir_i2c_ts.o
-obj-$(CONFIG_TOUCHSCREEN_S3C2410)	+= s3c2410_ts.o
-obj-$(CONFIG_TOUCHSCREEN_ST1232)	+= st1232.o
-obj-$(CONFIG_TOUCHSCREEN_STMPE)		+= stmpe-ts.o
-obj-$(CONFIG_TOUCHSCREEN_TI_TSCADC)	+= ti_tscadc.o
-obj-$(CONFIG_TOUCHSCREEN_TNETV107X)	+= tnetv107x-ts.o
-#obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI)	+= synaptics_i2c_rmi.o
-obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_RMI4_I2C) +=synaptics/
-obj-$(CONFIG_TOUCHSCREEN_TOUCHIT213)	+= touchit213.o
-obj-$(CONFIG_TOUCHSCREEN_TOUCHRIGHT)	+= touchright.o
-obj-$(CONFIG_TOUCHSCREEN_TOUCHWIN)	+= touchwin.o
-obj-$(CONFIG_TOUCHSCREEN_TSC_SERIO)	+= tsc40.o
-obj-$(CONFIG_TOUCHSCREEN_TSC2005)	+= tsc2005.o
-obj-$(CONFIG_TOUCHSCREEN_TSC2007)	+= tsc2007.o
-obj-$(CONFIG_TOUCHSCREEN_UCB1400)	+= ucb1400_ts.o
-obj-$(CONFIG_TOUCHSCREEN_WACOM_W8001)	+= wacom_w8001.o
-obj-$(CONFIG_TOUCHSCREEN_WM831X)	+= wm831x-ts.o
-obj-$(CONFIG_TOUCHSCREEN_WM97XX)	+= wm97xx-ts.o
-wm97xx-ts-$(CONFIG_TOUCHSCREEN_WM9705)	+= wm9705.o
-wm97xx-ts-$(CONFIG_TOUCHSCREEN_WM9712)	+= wm9712.o
-wm97xx-ts-$(CONFIG_TOUCHSCREEN_WM9713)	+= wm9713.o
-obj-$(CONFIG_TOUCHSCREEN_WM97XX_ATMEL)	+= atmel-wm97xx.o
-obj-$(CONFIG_TOUCHSCREEN_WM97XX_MAINSTONE)	+= mainstone-wm97xx.o
-obj-$(CONFIG_TOUCHSCREEN_WM97XX_ZYLONITE)	+= zylonite-wm97xx.o
-obj-$(CONFIG_TOUCHSCREEN_W90X900)	+= w90p910_ts.o
-obj-$(CONFIG_TOUCHSCREEN_TPS6507X)	+= tps6507x-ts.o
-obj-$(CONFIG_TOUCHSCREEN_FT5X06)	+= ft5x06_ts.o
-obj-$(CONFIG_TOUCHSCREEN_MSM_LEGACY)		+= msm_touch.o
-obj-$(CONFIG_TOUCHSCREEN_CY8C_TS)	+= cy8c_ts.o
-obj-$(CONFIG_TOUCHSCREEN_CYTTSP_I2C_QC)       += cyttsp-i2c-qc.o
-obj-$(CONFIG_TOUCHSCREEN_FT5X06)	+= ft5x06_ts.o
-obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI4)		+= synaptics_i2c_rmi4.o
-obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_RMI4_DEV)	+= synaptics_rmi_dev.o
-obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE) 	+= synaptics_fw_update.o
-#[ECID:000000] ZTEBSP zhangzhao, add for  touchscreen, start
+obj-$(CONFIG_MSM_AMSS_ENHANCE_DEBUG) += enhance-debug.o
+
+obj-y += acpuclock.o
+obj-$(CONFIG_ARCH_MSM_KRAIT) += acpuclock-krait.o
+obj-$(CONFIG_ARCH_MSM7X27) += acpuclock-7627.o acpuclock-8625q.o clock-pll.o
+obj-$(CONFIG_ARCH_MSM_SCORPION) += pmu.o
+obj-$(CONFIG_ARCH_MSM_SCORPIONMP) += perf_event_msm_l2.o
+obj-$(CONFIG_ARCH_MSM_KRAIT) += msm-krait-l2-accessors.o pmu.o perf_event_msm_krait_l2.o
+obj-$(CONFIG_ARCH_MSM_KRAIT) += krait-scm.o
+obj-$(CONFIG_ARCH_MSM7X27A) += pmu.o
+
+ifndef CONFIG_MSM_SMP
+obj-$(CONFIG_ARCH_MSM_SCORPION) += msm_fault_handlers.o
+endif
+
+obj-$(CONFIG_MSM_VIC) += irq-vic.o
+
+ifdef CONFIG_ARCH_QSD8X50
+	obj-$(CONFIG_MSM_SOC_REV_NONE) += acpuclock-8x50.o
+endif
+
+obj-$(CONFIG_SMP) += headsmp.o
+ifdef CONFIG_ARCH_MSM8625
+	obj-$(CONFIG_SMP) += platsmp-8625.o
+else
+	obj-$(CONFIG_SMP) += platsmp.o
+endif
+obj-$(CONFIG_HOTPLUG_CPU) += hotplug.o
+
+obj-$(CONFIG_MSM_CPU_AVS) += avs.o
+obj-$(CONFIG_MSM_AVS_HW) += avs_hw.o
+obj-$(CONFIG_CPU_V6) += idle-v6.o
+obj-$(CONFIG_CPU_V7) += idle-v7.o
+obj-$(CONFIG_MSM_JTAG) += jtag.o
+
+msm-etm-objs := etm.o
+obj-$(CONFIG_MSM_ETM) += msm-etm.o
+
+quiet_cmd_mkrpcsym = MKCAP   $@
+      cmd_mkrpcsym = $(PERL) $(srctree)/$(src)/mkrpcsym.pl $< $@
+
+target += smd_rpc_sym.c
+$(obj)/smd_rpc_sym.c: $(src)/smd_rpc_sym $(src)/mkrpcsym.pl
+	$(call if_changed,mkrpcsym)
+
+obj-$(CONFIG_MSM_SCM) += scm.o scm-boot.o
+obj-$(CONFIG_MSM_SECURE_IO) += scm-io.o
+obj-$(CONFIG_MSM_PIL) += peripheral-loader.o
+obj-$(CONFIG_MSM_PIL) += scm-pas.o
+obj-$(CONFIG_MSM_PIL_QDSP6V3) += pil-q6v3.o
+obj-$(CONFIG_MSM_PIL_QDSP6V4) += pil-q6v4.o
+obj-$(CONFIG_MSM_PIL_LPASS_QDSP6V5) += pil-q6v5.o pil-q6v5-lpass.o
+obj-$(CONFIG_MSM_PIL_MSS_QDSP6V5) += pil-q6v5.o pil-q6v5-mss.o
+obj-$(CONFIG_MSM_PIL_MBA) += pil-mba.o
+obj-$(CONFIG_MSM_PIL_RIVA) += pil-riva.o
+obj-$(CONFIG_MSM_PIL_TZAPPS) += pil-tzapps.o
+obj-$(CONFIG_MSM_PIL_VIDC) += pil-vidc.o
+obj-$(CONFIG_MSM_PIL_MODEM) += pil-modem.o
+obj-$(CONFIG_MSM_PIL_DSPS) += pil-dsps.o
+obj-$(CONFIG_MSM_PIL_GSS) += pil-gss.o
+obj-$(CONFIG_MSM_PIL_PRONTO) += pil-pronto.o
+obj-$(CONFIG_MSM_PIL_VENUS) += pil-venus.o
+obj-$(CONFIG_ARCH_QSD8X50) += sirc.o
+obj-$(CONFIG_ARCH_FSM9XXX) += sirc-fsm9xxx.o
+obj-$(CONFIG_MSM_FIQ_SUPPORT) += fiq_glue.o
+obj-$(CONFIG_MACH_TROUT) += board-trout-rfkill.o
+obj-$(CONFIG_MSM_SDIO_AL) += sdio_al.o
+obj-$(CONFIG_MSM_SDIO_AL) += sdio_al_test.o
+obj-$(CONFIG_MSM_SDIO_AL) += sdio_al_dloader.o
+obj-$(CONFIG_MSM_SDIO_DMUX) += sdio_dmux.o
+obj-$(CONFIG_MSM_BAM_DMUX) += bam_dmux.o
+obj-$(CONFIG_MSM_SMD_LOGGING) += smem_log.o
+obj-$(CONFIG_MSM_IPC_LOGGING) += ipc_logging.o
+ifdef CONFIG_DEBUG_FS
+obj-$(CONFIG_MSM_IPC_LOGGING) += ipc_logging_debug.o
+endif
+obj-$(CONFIG_MSM_SMD) += smd.o smd_debug.o remote_spinlock.o smd_private.o
+obj-y += socinfo.o
+ifndef CONFIG_ARCH_MSM9615
+ifndef CONFIG_ARCH_APQ8064
+ifndef CONFIG_ARCH_MSM8960
+ifndef CONFIG_ARCH_MSM8X60
+ifndef CONFIG_ARCH_MSM8974
+	obj-$(CONFIG_MSM_SMD) += pmic.o
+	obj-$(CONFIG_MSM_ONCRPCROUTER) += rpc_hsusb.o rpc_pmapp.o rpc_fsusb.o
+endif
+endif
+endif
+endif
+endif
+ifndef CONFIG_ARCH_MSM8960
+ifndef CONFIG_ARCH_MSM8X60
+ifndef CONFIG_ARCH_APQ8064
+ifndef CONFIG_ARCH_MSM8974
+ifndef CONFIG_ARCH_MSM9625
+	obj-y += nand_partitions.o
+endif
+endif
+endif
+endif
+endif
+obj-$(CONFIG_MSM_SDIO_TTY) += sdio_tty.o
+obj-$(CONFIG_MSM_SMD_TTY) += smd_tty.o
+obj-$(CONFIG_MSM_SMD_QMI) += smd_qmi.o
+obj-$(CONFIG_MSM_SMD_PKT) += smd_pkt.o
+obj-$(CONFIG_MSM_SDIO_CMUX) += sdio_cmux.o
+obj-$(CONFIG_MSM_DSPS) += msm_dsps.o
+obj-$(CONFIG_MSM_SDIO_CTL) += sdio_ctl.o
+obj-$(CONFIG_MSM_SMD_NMEA) += smd_nmea.o
+obj-$(CONFIG_MSM_RESET_MODEM) += reset_modem.o
+obj-$(CONFIG_MSM_IPC_ROUTER_SMD_XPRT) += ipc_router_smd_xprt.o
+obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter.o
+obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_device.o
+obj-$(CONFIG_MSM_IPC_ROUTER) += ipc_router.o
+obj-$(CONFIG_MSM_IPC_ROUTER)+= ipc_socket.o
+obj-$(CONFIG_DEBUG_FS) += smd_rpc_sym.o
+obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_servers.o
+obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_clients.o
+obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_xdr.o
+obj-$(CONFIG_MSM_ONCRPCROUTER) += rpcrouter_smd_xprt.o
+obj-$(CONFIG_MSM_RPC_SDIO_XPRT) += rpcrouter_sdio_xprt.o
+obj-$(CONFIG_MSM_RPC_PING) += ping_mdm_rpc_client.o
+obj-$(CONFIG_MSM_RPC_PROC_COMM_TEST) += proc_comm_test.o
+obj-$(CONFIG_MSM_RPC_PING) += ping_mdm_rpc_client.o ping_apps_server.o
+obj-$(CONFIG_MSM_RPC_OEM_RAPI) += oem_rapi_client.o
+obj-$(CONFIG_MSM_RPC_WATCHDOG) += rpc_dog_keepalive.o
+obj-$(CONFIG_MSM_RPCSERVER_WATCHDOG) += rpc_server_dog_keepalive.o
+obj-$(CONFIG_MSM_RPCSERVER_TIME_REMOTE) += rpc_server_time_remote.o
+obj-$(CONFIG_MSM_DALRPC) += dal.o
+obj-$(CONFIG_MSM_DALRPC_TEST) += dal_remotetest.o
+obj-$(CONFIG_ARCH_MSM7X30) += dal_axi.o
+obj-$(CONFIG_ARCH_MSM7X27A) += dal_axi.o
+obj-$(CONFIG_MSM_ADSP) += qdsp5/
+obj-$(CONFIG_MSM7KV2_AUDIO) += qdsp5v2/
+obj-$(CONFIG_MSM_RPCSERVER_HANDSET) += rpc_server_handset.o
+obj-$(CONFIG_MSM_QDSP6) += qdsp6/
+obj-$(CONFIG_MSM8X60_AUDIO) += qdsp6v2/
+obj-$(CONFIG_MSM_AUDIO_QDSP6) += qdsp6v2/
+obj-$(CONFIG_MSM_AUDIO_QDSP6V2) += qdsp6v2/
+obj-$(CONFIG_MSM_HW3D) += hw3d.o
+obj-$(CONFIG_PM) += pm-boot.o
+obj-$(CONFIG_MSM_PM8X60) += pm-8x60.o pm-data.o
+obj-$(CONFIG_MSM_IDLE_STATS) += pm-stats.o
+obj-$(CONFIG_MSM_PM2) += pm2.o
+obj-$(CONFIG_MSM_NOPM) += no-pm.o
+
+obj-$(CONFIG_MSM_PCIE) += pcie.o pcie_irq.o
+
+obj-$(CONFIG_MSM_SPM_V1) += spm.o
+obj-$(CONFIG_MSM_SPM_V2) += spm-v2.o spm_devices.o
+
+obj-$(CONFIG_MSM_DMA_TEST) += dma_test.o
+obj-$(CONFIG_SURF_FFA_GPIO_KEYPAD) += keypad-surf-ffa.o
+
+obj-$(CONFIG_ARCH_MSM7X01A) += board-halibut.o devices-msm7x01a.o clock-pcom-lookup.o
+obj-$(CONFIG_MACH_TROUT) += board-trout.o board-trout-gpio.o
+obj-$(CONFIG_MACH_TROUT) += board-trout-keypad.o board-trout-panel.o
+obj-$(CONFIG_MACH_TROUT) += htc_akm_cal.o htc_wifi_nvs.o htc_acoustic.o
+obj-$(CONFIG_MACH_TROUT) += board-trout-mmc.o board-trout-wifi.o
+obj-$(CONFIG_ARCH_QSD8X50) += devices-qsd8x50.o clock-pcom-lookup.o
+obj-$(CONFIG_MACH_QSD8X50_SURF) += board-qsd8x50.o
+obj-$(CONFIG_MACH_QSD8X50_FFA) += board-qsd8x50.o
+obj-$(CONFIG_ARCH_MSM8X60) += devices-msm8x60.o clock-local.o clock-8x60.o acpuclock-8x60.o clock-pll.o
+obj-$(CONFIG_ARCH_MSM8X60) += clock-rpm.o
+obj-$(CONFIG_ARCH_MSM8X60) += saw-regulator.o
+obj-$(CONFIG_ARCH_MSM8X60) += footswitch-8x60.o
+
+ifdef CONFIG_MSM_RPM_REGULATOR
+obj-y += rpm-regulator.o
+obj-$(CONFIG_ARCH_MSM8X60) += rpm-regulator-8660.o
+obj-$(CONFIG_ARCH_MSM8960) += rpm-regulator-8960.o
+obj-$(CONFIG_ARCH_MSM9615) += rpm-regulator-9615.o
+obj-$(CONFIG_ARCH_MSM8930) += rpm-regulator-8930.o
+obj-$(CONFIG_ARCH_APQ8064) += rpm-regulator-8960.o
+endif
+
+obj-$(CONFIG_MSM_RPM_REGULATOR_SMD) += rpm-regulator-smd.o
+
+ifdef CONFIG_MSM_SUBSYSTEM_RESTART
+	obj-y += subsystem_notif.o
+	obj-y += subsystem_restart.o
+	obj-y += ramdump.o
+	obj-$(CONFIG_ARCH_MSM8X60) += modem-8660.o lpass-8660.o
+endif
+obj-$(CONFIG_MSM_SYSMON_COMM) += sysmon.o
+obj-$(CONFIG_MSM_MODEM_8960) += modem-8960.o
+obj-$(CONFIG_MSM_LPASS_8960) += lpass-8960.o
+obj-$(CONFIG_MSM_WCNSS_SSR_8960) += wcnss-ssr-8960.o
+obj-$(CONFIG_MSM_GSS_SSR_8064) += gss-8064.o
+
+ifdef CONFIG_CPU_IDLE
+	obj-$(CONFIG_ARCH_APQ8064) += cpuidle.o
+	obj-$(CONFIG_ARCH_MSM8960) += cpuidle.o
+	obj-$(CONFIG_ARCH_MSM8X60) += cpuidle.o
+	obj-$(CONFIG_ARCH_MSM9615) += cpuidle.o
+	obj-$(CONFIG_ARCH_MSM8974) += cpuidle.o
+endif
+
+ifdef CONFIG_MSM_CAMERA_V4L2
+	obj-$(CONFIG_ARCH_MSM8X60) += board-msm8x60-camera.o
+endif
+obj-$(CONFIG_ARCH_FSM9XXX) += devices-fsm9xxx.o
+obj-$(CONFIG_ARCH_FSM9XXX) += clock-fsm9xxx.o clock-local.o acpuclock-fsm9xxx.o
+obj-$(CONFIG_ARCH_FSM9XXX) += dfe-fsm9xxx.o rfic-fsm9xxx.o
+obj-$(CONFIG_ARCH_FSM9XXX) += restart-fsm9xxx.o xo-fsm9xxx.o
+
+obj-$(CONFIG_MSM_WATCHDOG) += msm_watchdog.o
+obj-$(CONFIG_MSM_WATCHDOG) += msm_watchdog_asm.o
+obj-$(CONFIG_MSM_WATCHDOG_V2) += msm_watchdog_v2.o
+obj-$(CONFIG_MACH_MSM8X60_RUMI3) += board-msm8x60.o
+obj-$(CONFIG_MACH_MSM8X60_SIM) += board-msm8x60.o
+obj-$(CONFIG_MACH_MSM8X60_SURF) += board-msm8x60.o
+obj-$(CONFIG_MACH_MSM8X60_FFA) += board-msm8x60.o
+obj-$(CONFIG_MACH_MSM8X60_FLUID) += board-msm8x60.o
+obj-$(CONFIG_MACH_MSM8X60_DRAGON) += board-msm8x60.o
+obj-$(CONFIG_MACH_TYPE_MSM8X60_FUSION) += board-msm8x60.o mdm.o
+obj-$(CONFIG_MACH_MSM8X60_FUSN_FFA) += board-msm8x60.o mdm.o
+obj-$(CONFIG_TROUT_H2W) += board-trout-h2w.o
+obj-$(CONFIG_TROUT_BATTCHG) += htc_battery.o
+obj-$(CONFIG_TROUT_PWRSINK) += htc_pwrsink.o
+obj-$(CONFIG_ARCH_MSM7X27) += clock-pcom-lookup.o
+#added by fanjiankang for wifi
+obj-$(CONFIG_ARCH_MSM7X27) += board-zte-wifi.o
+obj-$(CONFIG_MACH_MSM7X27_SURF) += board-msm7x27.o devices-msm7x27.o
+obj-$(CONFIG_MACH_MSM7X27_FFA) += board-msm7x27.o devices-msm7x27.o
+obj-$(CONFIG_ARCH_MSM7X27A) += clock-pcom-lookup.o devices-msm7x27a.o
+#ZTEBSP liwen 20121228 modify for zte project
+#board-7627a-all-objs += board-msm7627a-storage.o board-msm7627a-bt.o board-msm7627a-camera.o
+board-7627a-all-objs += board-msm7627a-storage.o board-msm7627a-bt.o
+
+#//[ECID:0000]ZTE_BSP maxiaoping 20130124 modify for P865F05 basic driver,start.
 ifeq ($(CONFIG_PROJECT_P825F02),y)
-obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI)	+= synaptics_i2c_rmi_p825f02.o
-obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_NEW)	       += ft5x0x_ts_new.o
-else
+board-7627a-all-objs += board-msm7627a-camera-p825f02.o
+else 
 ifeq ($(CONFIG_PROJECT_P865F04),y)
-obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI)	+= synaptics_i2c_rmi_p825f02.o
-obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_NEW)	       += ft5x0x_ts_new.o
-#//[ECID:0000]ZTE_BSP maxiaoping 20130124 modify for P865F05 basic driver,start.
-else
-ifeq ($(CONFIG_PROJECT_P825V20),y)
-obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI)	+= synaptics_i2c_rmi_p825v20.o
-obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_NEW)	       += ft5x0x_ts_new_v20.o
-#//[ECID:0000]ZTE_BSP maxiaoping 20130124 modify for P865F05 basic driver,start.
-else
-ifeq ($(CONFIG_PROJECT_P865G01),y)
-obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI)	+= synaptics_i2c_rmi_p865g01.o
-obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_NEW)	       += ft5x0x_ts_new.o
-
+board-7627a-all-objs += board-msm7627a-camera-p825f02.o
 else
 ifeq ($(CONFIG_PROJECT_P865F05),y)
-obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI)	+= synaptics_i2c_rmi_p865f05.o
-obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_NEW)	       += ft5x0x_ts_new.o
-
+board-7627a-all-objs += board-msm7627a-camera-p825f02.o
 else
-obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI)	+= synaptics_i2c_rmi_p825f02.o
-obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_NEW)	       += ft5x0x_ts_new.o
+ifeq ($(CONFIG_PROJECT_P825V20),y)
+board-7627a-all-objs += board-msm7627a-camera-p825f02.o
+else 
+ifeq ($(CONFIG_PROJECT_P865G01),y)
+board-7627a-all-objs += board-msm7627a-camera-p865g01.o  #yuxin add for p865g01 2013.01.16
+else
+board-7627a-all-objs += board-msm7627a-camera.o
+endif
+endif
+endif
+endif
+endif
 #//[ECID:0000]ZTE_BSP maxiaoping 20130124 modify for P865F05 basic driver,end.
+
+board-7627a-all-objs += audio-7627a-devices.o
+board-7627a-all-objs += board-msm7627a-display.o board-msm7627a-wlan.o board-msm7627a-io.o board-msm7627a-sensor.o
+obj-$(CONFIG_MACH_MSM7X27A_RUMI3) += board-msm7x27a.o board-7627a-all.o
+obj-$(CONFIG_MACH_MSM7X27A_SURF) += board-msm7x27a.o board-7627a-all.o
+obj-$(CONFIG_MACH_MSM7X27A_FFA) += board-msm7x27a.o board-7627a-all.o
+obj-$(CONFIG_MACH_MSM7627A_QRD1) += board-qrd7627a.o board-7627a-all.o
+obj-$(CONFIG_MACH_MSM7627A_QRD3) += board-qrd7627a.o board-7627a-all.o
+obj-$(CONFIG_MACH_MSM7627A_EVB) += board-qrd7627a.o board-7627a-all.o
+obj-$(CONFIG_ARCH_MSM8625) += msm_smem_iface.o devices-msm7x27a.o clock-pcom-lookup.o mpm-8625.o
+obj-$(CONFIG_MACH_MSM8625_RUMI3) += board-msm7x27a.o
+obj-$(CONFIG_MACH_MSM8625_SURF) +=  board-msm7x27a.o board-7627a-all.o
+obj-$(CONFIG_MACH_MSM8625_EVB) +=  board-qrd7627a.o board-7627a-all.o
+obj-$(CONFIG_MACH_MSM8625_QRD7) +=  board-qrd7627a.o board-7627a-all.o
+obj-$(CONFIG_MACH_MSM8625_FFA) += board-msm7x27a.o board-7627a-all.o
+obj-$(CONFIG_MACH_MSM8625_QRD5) +=  board-msm7x27a.o board-7627a-all.o
+obj-$(CONFIG_ARCH_MSM7X30) += board-msm7x30.o devices-msm7x30.o memory_topology.o
+obj-$(CONFIG_ARCH_MSM7X30) += clock-local.o clock-7x30.o acpuclock-7x30.o clock-pll.o
+obj-$(CONFIG_MACH_MSM7X25_SURF) += board-msm7x27.o devices-msm7x25.o
+obj-$(CONFIG_MACH_MSM7X25_FFA) += board-msm7x27.o devices-msm7x25.o
+obj-$(CONFIG_ARCH_MSM8960) += clock-local.o clock-dss-8960.o clock-8960.o clock-rpm.o clock-pll.o
+obj-$(CONFIG_ARCH_MSM8960) += footswitch-8x60.o
+obj-$(CONFIG_ARCH_MSM8960) += acpuclock-8960.o
+obj-$(CONFIG_ARCH_MSM8960) += memory_topology.o
+obj-$(CONFIG_ARCH_MSM8960) += saw-regulator.o
+obj-$(CONFIG_ARCH_MSM8960) += devices-8960.o
+obj-$(CONFIG_ARCH_APQ8064) += devices-8960.o devices-8064.o
+obj-$(CONFIG_ARCH_APQ8064) += acpuclock-8064.o
+board-8960-all-objs += board-8960.o board-8960-camera.o board-8960-display.o board-8960-pmic.o board-8960-storage.o board-8960-gpiomux.o
+board-8930-all-objs += board-8930.o board-8930-camera.o board-8930-display.o board-8930-pmic.o board-8930-storage.o board-8930-gpiomux.o devices-8930.o board-8930-gpu.o
+board-8064-all-objs += board-8064.o board-8064-pmic.o board-8064-storage.o board-8064-gpiomux.o board-8064-camera.o board-8064-display.o board-8064-gpu.o
+obj-$(CONFIG_MACH_MSM8960_SIM) += board-8960-all.o board-8960-regulator.o
+obj-$(CONFIG_MACH_MSM8960_RUMI3) += board-8960-all.o board-8960-regulator.o
+obj-$(CONFIG_MACH_MSM8960_CDP) += board-8960-all.o board-8960-regulator.o
+obj-$(CONFIG_MACH_MSM8960_MTP) += board-8960-all.o board-8960-regulator.o
+obj-$(CONFIG_MACH_MSM8960_FLUID) += board-8960-all.o board-8960-regulator.o
+obj-$(CONFIG_MACH_MSM8930_CDP) += board-8930-all.o board-8930-regulator.o
+obj-$(CONFIG_MACH_MSM8930_MTP) += board-8930-all.o board-8930-regulator.o
+obj-$(CONFIG_MACH_MSM8930_FLUID) += board-8930-all.o board-8930-regulator.o
+obj-$(CONFIG_PM8921_BMS) += bms-batterydata.o bms-batterydata-desay.o
+obj-$(CONFIG_MACH_APQ8064_SIM) += board-8064-all.o board-8064-regulator.o
+obj-$(CONFIG_MACH_APQ8064_RUMI3) += board-8064-all.o board-8064-regulator.o
+obj-$(CONFIG_MACH_APQ8064_CDP) += board-8064-all.o board-8064-regulator.o
+obj-$(CONFIG_MACH_APQ8064_MTP) += board-8064-all.o board-8064-regulator.o
+obj-$(CONFIG_MACH_APQ8064_LIQUID) += board-8064-all.o board-8064-regulator.o
+obj-$(CONFIG_MACH_MPQ8064_HRD) += board-8064-all.o board-8064-regulator.o
+obj-$(CONFIG_MACH_MPQ8064_DTV) += board-8064-all.o board-8064-regulator.o
+obj-$(CONFIG_ARCH_MSM9615) += board-9615.o devices-9615.o board-9615-regulator.o board-9615-gpiomux.o board-9615-storage.o board-9615-display.o
+obj-$(CONFIG_ARCH_MSM9615) += clock-local.o clock-9615.o acpuclock-9615.o clock-rpm.o clock-pll.o
+obj-$(CONFIG_ARCH_MSM8974) += board-8974.o board-dt.o board-8974-regulator.o board-8974-gpiomux.o
+obj-$(CONFIG_ARCH_MSM8974) += acpuclock-8974.o
+obj-$(CONFIG_ARCH_MSM8974) += clock-local2.o clock-pll.o clock-8974.o clock-rpm.o clock-voter.o
+obj-$(CONFIG_ARCH_MSM8974) += gdsc.o
+obj-$(CONFIG_ARCH_MSM9625) += board-9625.o board-9625-gpiomux.o
+obj-$(CONFIG_ARCH_MSM8930) += acpuclock-8930.o acpuclock-8627.o acpuclock-8930aa.o
+
+obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire.o board-sapphire-gpio.o
+obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-keypad.o board-sapphire-panel.o
+obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-mmc.o board-sapphire-wifi.o
+obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-rfkill.o msm_vibrator.o
+
+CFLAGS_msm_vibrator.o += -Idrivers/staging/android
+CFLAGS_board-9615.o += -Idrivers/usb/gadget
+
+obj-$(CONFIG_ARCH_FSM9XXX) += board-fsm9xxx.o
+
+obj-$(CONFIG_TROUT_BATTCHG) += htc_battery.o
+
+obj-$(CONFIG_HTC_PWRSINK) += htc_pwrsink.o
+obj-$(CONFIG_HTC_HEADSET) += htc_headset.o
+obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_client.o
+obj-$(CONFIG_MSM_SDIO_SMEM) += sdio_smem.o
+obj-$(CONFIG_MSM_RPM) += rpm.o
+ifdef CONFIG_MSM_RPM
+	obj-$(CONFIG_ARCH_APQ8064) += rpm_resources.o
+	obj-$(CONFIG_ARCH_MSM8960) += rpm_resources.o
+	obj-$(CONFIG_ARCH_MSM8X60) += rpm_resources.o
+	obj-$(CONFIG_ARCH_MSM9615) += rpm_resources.o
 endif
+ifdef CONFIG_MSM_RPM_SMD
+	obj-$(CONFIG_ARCH_MSM8974) += lpm_levels.o lpm_resources.o
 endif
+obj-$(CONFIG_MSM_MPM) += mpm.o
+obj-$(CONFIG_MSM_RPM_STATS_LOG) += rpm_stats.o
+obj-$(CONFIG_MSM_RPM_RBCPR_STATS_LOG) += rpm_rbcpr_stats.o
+obj-$(CONFIG_MSM_RPM_LOG) += rpm_log.o
+obj-$(CONFIG_MSM_TZ_LOG) += tz_log.o
+obj-$(CONFIG_MSM_XO) += msm_xo.o
+obj-$(CONFIG_MSM_BUS_SCALING) += msm_bus/
+obj-$(CONFIG_MSM_BUSPM_DEV) += msm-buspm-dev.o
+
+obj-$(CONFIG_MSM_IOMMU)		+= devices-iommu.o iommu_domains.o
+
+ifdef CONFIG_VCM
+obj-$(CONFIG_ARCH_MSM8X60) += board-msm8x60-vcm.o
 endif
+obj-$(CONFIG_MSM_OCMEM) += ocmem.o ocmem_allocator.o ocmem_notifier.o
+obj-$(CONFIG_MSM_OCMEM) += ocmem_sched.o ocmem_api.o
+
+obj-$(CONFIG_ARCH_MSM7X27) += gpiomux-7x27.o gpiomux-v1.o gpiomux.o
+obj-$(CONFIG_ARCH_MSM7X30) += gpiomux-7x30.o gpiomux-v1.o gpiomux.o
+obj-$(CONFIG_ARCH_QSD8X50) += gpiomux-8x50.o gpiomux-v1.o gpiomux.o
+obj-$(CONFIG_ARCH_MSM8X60) += gpiomux-8x60.o gpiomux-v2.o gpiomux.o
+obj-$(CONFIG_ARCH_MSM8960) += gpiomux-v2.o gpiomux.o
+obj-$(CONFIG_ARCH_APQ8064) += gpiomux-v2.o gpiomux.o
+obj-$(CONFIG_ARCH_MSM9615) += gpiomux-v2.o gpiomux.o
+obj-$(CONFIG_ARCH_MSM8974) += gpiomux-v2.o gpiomux.o
+obj-$(CONFIG_ARCH_MSM9625) += gpiomux-v2.o gpiomux.o
+
+
+obj-$(CONFIG_MSM_SLEEP_STATS) += idle_stats.o
+obj-$(CONFIG_MSM_SM_EVENT) += sm_event.o
+obj-$(CONFIG_MSM_SM_EVENT_LOG) += sm_event_log.o sm_event_driver.o
+obj-$(CONFIG_MSM_SLEEP_MONITOR) += sleep_monitor.o
+obj-$(CONFIG_MSM_SLEEP_STATS_DEVICE) += idle_stats_device.o
+obj-$(CONFIG_MSM_DCVS) += msm_dcvs_scm.o msm_dcvs.o msm_dcvs_idle.o
+obj-$(CONFIG_MSM_RUN_QUEUE_STATS) += msm_rq_stats.o
+obj-$(CONFIG_MSM_SHOW_RESUME_IRQ) += msm_show_resume_irq.o
+obj-$(CONFIG_BT_MSM_PINTEST)  += btpintest.o
+obj-$(CONFIG_MSM_FAKE_BATTERY) += fish_battery.o
+obj-$(CONFIG_MSM_RPC_VIBRATOR) += msm_vibrator.o
+obj-$(CONFIG_MSM_NATIVE_RESTART) += restart.o
+obj-$(CONFIG_MSM_MODEM_RESTART) += restart_7k.o
+
+obj-$(CONFIG_MSM_PROC_COMM_REGULATOR) += proccomm-regulator.o
+ifdef CONFIG_MSM_PROC_COMM_REGULATOR
+obj-$(CONFIG_MACH_MSM7X27_SURF) += board-msm7627-regulator.o
+obj-$(CONFIG_MACH_MSM7X27_FFA) += board-msm7627-regulator.o
+obj-$(CONFIG_ARCH_MSM7X30) += board-msm7x30-regulator.o
+obj-$(CONFIG_ARCH_MSM7X27A) += board-msm7x27a-regulator.o
 endif
+
+obj-$(CONFIG_ARCH_MSM8960) += mdm2.o mdm_common.o
+obj-$(CONFIG_MSM_RTB) += msm_rtb.o
+obj-$(CONFIG_MSM_CACHE_ERP) += cache_erp.o
+obj-$(CONFIG_MSM_EBI_ERP) += ebi_erp.o
+obj-$(CONFIG_MSM_CACHE_DUMP) += msm_cache_dump.o
+
+obj-$(CONFIG_MSM_HSIC_SYSMON) += hsic_sysmon.o
+obj-$(CONFIG_MSM_HSIC_SYSMON_TEST) += hsic_sysmon_test.o
+
+obj-$(CONFIG_MSM_RPM_SMD) += rpm-smd.o
+obj-$(CONFIG_MSM_CPR) += msm_cpr.o
+obj-$(CONFIG_MSM_VP_REGULATOR) += msm_vp.o
+
+ifdef CONFIG_MSM_CPR
+obj-$(CONFIG_DEBUG_FS) += msm_cpr-debug.o
 endif
-#[ECID:000000] ZTEBSP zhangzhao, add for  touchscreen, end
+obj-$(CONFIG_MSM_FAST_BOOT) += fastboot.o
+obj-$(CONFIG_MSM_FIQ) += msm7k_fiq.o
+obj-$(CONFIG_MSM_FIQ) += msm7k_fiq_handler.o
