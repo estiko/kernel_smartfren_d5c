@@ -653,21 +653,6 @@ config USB_HSIC_SMSC_HUB
 	  This adds support for connecting devices like mouse in HSIC
 	  Host mode.
 
-
-#//[ECID:0000] ZTEBSP maxiaoping 20120521 for hardware board id,start
-config HW_BOARD_ID
-	bool "Module which is to show zte hardware board id"
-	---help---
-	zte board id module
-	
-#added by maxiaoping for using 3 gpios to detect hw board id.
-config HW_BOARD_ID_USE_THREE_GPIOS
-        bool "HW_BOARD_ID_USE_THREE_GPIOS Support"
-        default n
-        ---help---
-        use 3 gpios to detect hw board id.	
-#//[ECID:0000] ZTEBSP maxiaoping 20120521 for hardware board id,end
-
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
@@ -677,11 +662,4 @@ source "drivers/misc/ti-st/Kconfig"
 source "drivers/misc/lis3lv02d/Kconfig"
 source "drivers/misc/carma/Kconfig"
 source "drivers/misc/altera-stapl/Kconfig"
-#[ECID:000000] ZTEBSP wanghaifei start 20120330, add sensor support
-source "drivers/misc/inv_mpu/Kconfig"
-source "drivers/misc/akm/Kconfig"
-source "drivers/misc/ti-sensor/Kconfig"
-source "drivers/misc/zte-sensor/Kconfig"
-#[ECID:000000] ZTEBSP wanghaifei end 20120330, add sensor support
-
 endmenu
