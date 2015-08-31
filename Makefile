@@ -193,12 +193,7 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ \
 # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
 export KBUILD_BUILDHOST := $(SUBARCH)
 ARCH		?= arm
-<<<<<<< HEAD
 CROSS_COMPILE   ?= /home/estiko/android/kernel/toolchains/arm-gnu-linaro-4.7.4/bin/arm-eabi-
-=======
-CROSS_COMPILE   ?= /home/android/toolchains/arm-unknown-linux-gnueabi-linaro_4.7.4-2013.12/bin/arm-gnueabi-
-#CROSS_COMPILE	?= ~/test-kernel/toolchains/arm-eabi-linaro-4.6.2/bin/arm-eabi-
->>>>>>> 2851a12fcf6f159083a3670d0a10bee3126d3bc7
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)
@@ -248,13 +243,8 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 	  else if [ -x /bin/bash ]; then echo /bin/bash; \
 	  else echo sh; fi ; fi)
 
-<<<<<<< HEAD
 HOSTCC       = gcc
 HOSTCXX      = g++
-=======
-HOSTCC       = ccache gcc
-HOSTCXX      = ccache g++
->>>>>>> 2851a12fcf6f159083a3670d0a10bee3126d3bc7
 HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer
 HOSTCXXFLAGS = -O2
 
@@ -340,11 +330,7 @@ include $(srctree)/scripts/Kbuild.include
 
 AS		= $(CROSS_COMPILE)as
 LD		= $(CROSS_COMPILE)ld
-<<<<<<< HEAD
 REAL_CC		= $(CROSS_COMPILE)gcc
-=======
-REAL_CC		= ccache $(CROSS_COMPILE)gcc
->>>>>>> 2851a12fcf6f159083a3670d0a10bee3126d3bc7
 CPP		= $(CC) -E
 AR		= $(CROSS_COMPILE)ar
 NM		= $(CROSS_COMPILE)nm
