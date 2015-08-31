@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All Rights Reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -29,25 +29,25 @@
 #include <mach/pmic.h>
 #include <mach/socinfo.h>
 #include "devices.h"
+#include <linux/input/synaptics_dsx.h>
 
 #include "board-msm7627a.h"
 #include "devices-msm7x2xa.h"
 
-#if defined(CONFIG_HW_ARUBA)||defined(CONFIG_HW_ANDORRA)||defined(CONFIG_HW_ANDORRAP)
-#include <linux/rmi.h>
-#include <linux/interrupt.h>
-#endif
+
+#include <linux/synaptics_i2c_rmi.h>
+#include <linux/ft5x0x_ts_new.h>
 
 #define ATMEL_TS_I2C_NAME "maXTouch"
 #define ATMEL_X_OFFSET 13
 #define ATMEL_Y_OFFSET 0
 
 #if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_RMI4_I2C) || \
-	defined(CONFIG_TOUCHSCREEN_SYNAPTICS_RMI4_I2C_MODULE) || \
-		defined(CONFIG_HW_ARUBA)||defined(CONFIG_HW_ANDORRA)||defined(CONFIG_HW_ANDORRAP)
+defined(CONFIG_TOUCHSCREEN_SYNAPTICS_RMI4_I2C_MODULE)
 
 #ifndef CLEARPAD3000_ATTEN_GPIO
 #define CLEARPAD3000_ATTEN_GPIO (48)
+#define CLEARPAD3000_ATTEN_GPIO_EVBD_PLUS (115)
 #endif
 
 #ifndef CLEARPAD3000_RESET_GPIO
@@ -56,6 +56,35 @@
 
 #define KP_INDEX(row, col) ((row)*ARRAY_SIZE(kp_col_gpios) + (col))
 
+/******************** SYNAPTICS *********************************/
+
+/*	Synaptics Thin Driver	*/
+
+#define CLEARPAD3000_ADDR 0x20
+
+static unsigned char synaptic_rmi4_button_codes[] = {KEY_MENU, KEY_HOME,
+							KEY_BACK};
+
+static struct synaptics_rmi4_capacitance_button_map synaptic_rmi4_button_map = {
+	.nbuttons = ARRAY_SIZE(synaptic_rmi4_button_codes),
+	.map = synaptic_rmi4_button_codes,
+};
+
+static struct synaptics_rmi4_platform_data rmi4_platformdata = {
+	.irq_flags = IRQF_TRIGGER_FALLING,
+	.irq_gpio = CLEARPAD3000_ATTEN_GPIO_EVBD_PLUS,
+	.capacitance_button_map = &synaptic_rmi4_button_map,
+};
+
+static struct i2c_board_info rmi4_i2c_devices[] = {
+	{
+		I2C_BOARD_INFO("synaptics_rmi4_i2c",
+			CLEARPAD3000_ADDR),
+		.platform_data = &rmi4_platformdata,
+	},
+};
+
+/******************** SYNAPTICS *********************************/
 static unsigned int kp_row_gpios[] = {31, 32, 33, 34, 35};
 static unsigned int kp_col_gpios[] = {36, 37, 38, 39, 40};
 
@@ -169,16 +198,11 @@ static struct platform_device kp_pdev_8625 = {
 	},
 };
 
-/* skud keypad device information 
 
-static unsigned int kp_row_gpios_skud[] = {31, 32};
-static unsigned int kp_col_gpios_skud[] = {37};
-*/
-#if defined(CONFIG_HW_ARMANI)||defined(CONFIG_HW_AUDI)||defined(CONFIG_HW_ANDORRA)||defined(CONFIG_HW_ATHENAE) || \
-	defined(CONFIG_HW_ANDORRAP)
+/* skud keypad device information */
 static unsigned int kp_row_gpios_skud[] = {31};
-static unsigned int kp_col_gpios_skud[] = {38,37};
-#endif
+static unsigned int kp_col_gpios_skud[] = {40, 37};
+
 static const unsigned short keymap_skud[] = {
 	KEY_VOLUMEUP,
 	KEY_VOLUMEDOWN,
@@ -193,7 +217,8 @@ static struct gpio_event_matrix_info kp_matrix_info_skud = {
 	.ninputs        = ARRAY_SIZE(kp_col_gpios_skud),
 	.settle_time.tv64 = 40 * NSEC_PER_USEC,
 	.poll_time.tv64 = 20 * NSEC_PER_MSEC,
-	.flags          = GPIOKPF_LEVEL_TRIGGERED_IRQ | GPIOKPF_DRIVE_INACTIVE |
+         
+	.flags          = GPIOKPF_LEVEL_TRIGGERED_IRQ | GPIOKPF_DRIVE_INACTIVE | 
 			  GPIOKPF_PRINT_UNMAPPED_KEYS,
 };
 
@@ -261,6 +286,7 @@ static struct platform_device kp_pdev_skue = {
 
 #define MXT_TS_IRQ_GPIO         48
 #define MXT_TS_RESET_GPIO       26
+#define MXT_TS_EVBD_IRQ_GPIO    115
 #define MAX_VKEY_LEN		100
 
 static ssize_t mxt_virtual_keys_register(struct kobject *kobj,
@@ -828,7 +854,7 @@ static struct i2c_board_info atmel_ts_i2c_info[] __initdata = {
 
 static struct msm_handset_platform_data hs_platform_data = {
 	.hs_name = "7k_handset",
-	.pwr_key_delay_ms = 500, /* 0 will disable end key */
+	.pwr_key_delay_ms = 0, 
 };
 
 static struct platform_device hs_pdev = {
@@ -839,100 +865,21 @@ static struct platform_device hs_pdev = {
 	},
 };
 
-#if defined(CONFIG_HW_ARUBA)||defined(CONFIG_HW_ANDORRA)||defined(CONFIG_HW_ANDORRAP)
-#define S2202_ATTN	48
-#define S2202_I2C_ADDR	0x38
-
-struct syna_gpio_data{
-	u16 gpio_number;
-	char *gpio_name;
-};
-
-static unsigned char s2202_f1a_button_codes[] ={KEY_MENU, KEY_HOMEPAGE, KEY_BACK};
-
-static struct rmi_f1a_button_map s2202_f1a_button_map = {
-	.nbuttons = ARRAY_SIZE(s2202_f1a_button_codes),
-	.map = s2202_f1a_button_codes,
-};
-
-static struct syna_gpio_data s2202_gpiodata ={
-	.gpio_number = S2202_ATTN,
-	.gpio_name = "aruba_tp_irq",
-};
-
-static struct rmi_device_platform_data s2202_platformdata = {
-	.driver_name = "rmi_generic",
-	.sensor_name = "S2202",
-	.attn_gpio = S2202_ATTN,
-//	.level_triggered = true,
-	.attn_polarity = RMI_ATTN_ACTIVE_LOW,
-	.gpio_data = &s2202_gpiodata,
-//	.axis_align = AXIS_ALIGNMENT,
-	.f1a_button_map = &s2202_f1a_button_map,
-};
-
-
-static struct i2c_board_info s2202_device_info[] __initdata = {
-	{ 
-		I2C_BOARD_INFO("rmi_i2c", S2202_I2C_ADDR),
-		.platform_data = &s2202_platformdata,
-		.irq = MSM_GPIO_TO_INT(S2202_ATTN),
-	},
-/*	{ 
-		I2C_BOARD_INFO("rmi", 0x20),
-		.platform_data = &s2202_platformdata,
-		.irq = MSM_GPIO_TO_INT(S2202_ATTN),
-	},
-*/
-};
-
-static void __init syna_rmi4_touchpannel_setup(void)
-{
-	int ret;
-
-	ret = gpio_request(S2202_ATTN, "aruba_tp_irq");
-		if (ret)
-			printk(KERN_ERR"%s:gpio requset failed aruba_tp_irq%d ret = %d\n", __func__, S2202_ATTN, ret);
-	ret = gpio_tlmm_config(GPIO_CFG(S2202_ATTN, 0,
-			GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,
-			GPIO_CFG_8MA), GPIO_CFG_ENABLE);
-	if (ret)
-		pr_err("%s: gpio_tlmm_config for %d failed\n",
-			__func__, S2202_ATTN);
-
-	printk(KERN_ALERT"-------------------");
-	ret = gpio_request(26, "aruba_tp_reset");
-	gpio_tlmm_config(GPIO_CFG(26, 0,
-			GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP,
-			GPIO_CFG_2MA), GPIO_CFG_ENABLE);
-
-	gpio_set_value(26, 1);
-	mdelay(200);
-	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
-				s2202_device_info,
-				ARRAY_SIZE(s2202_device_info));
-
-
-}
-#endif
-#if defined(CONFIG_HW_SICILY)||defined(CONFIG_HW_ARMANI)||defined(CONFIG_HW_AUDI)||defined(CONFIG_HW_ATHENAE)
-#define FT5X06_IRQ_GPIO 48
-static struct i2c_board_info ft5x0x_device_info[] __initdata = {
-	{
-		I2C_BOARD_INFO(FT5X0X_NAME, 0x38),
-	//	.platform_data = &ft5x06_platformdata,
-		.irq = MSM_GPIO_TO_INT(FT5X06_IRQ_GPIO),
-	},
-};
-#endif
-
-#ifdef CONFIG_HW_ALASKA
 #define FT5X06_IRQ_GPIO		48
 #define FT5X06_RESET_GPIO	26
 
+#define FT5X06_IRQ_GPIO_QPR_SKUD	121
+#define FT5X06_RESET_GPIO_QPR_SKUD	26
+
+#define FT5X06_IRQ_GPIO_QPR_SKUD_PRIM	122
+#define FT5X06_RESET_GPIO_QPR_SKUD_PRIM	26
+
+#define FT5X16_IRQ_GPIO_EVBD	115
+
 #define FT5X06_IRQ_GPIO_QPR_SKUE	121
 #define FT5X06_RESET_GPIO_QPR_SKUE	26
-
+//ECID[00000000]haoweiwei modify begin
+#if 0
 static ssize_t
 ft5x06_virtual_keys_register(struct kobject *kobj,
 			     struct kobj_attribute *attr,
@@ -979,7 +926,8 @@ static struct attribute_group ft5x06_virtual_key_properties_attr_group = {
 };
 
 struct kobject *ft5x06_virtual_key_properties_kobj;
-
+#endif
+//ECID[00000000]haoweiwei modify end
 static struct regulator_bulk_data regs_ft5x06[] = {
 	{ .supply = "ldo12", .min_uV = 2700000, .max_uV = 3300000 },
 	{ .supply = "smps3", .min_uV = 1800000, .max_uV = 1800000 },
@@ -1031,6 +979,74 @@ static struct i2c_board_info ft5x06_device_info[] __initdata = {
 	},
 };
 
+//ECID[00000000]haoweiwei add begin
+
+static ssize_t
+skud_virtual_keys_register(struct kobject *kobj,
+			     struct kobj_attribute *attr,
+			     char *buf)
+{
+	if (machine_is_msm8625q_skud() || machine_is_msm8625q_evbd()) {
+		return snprintf(buf, 200,
+			__stringify(EV_KEY) ":" __stringify(KEY_HOME)  ":67:1000:135:60"
+			":" __stringify(EV_KEY) ":" __stringify(KEY_MENU)   ":202:1000:135:60"
+			":" __stringify(EV_KEY) ":" __stringify(KEY_BACK) ":337:1000:135:60"
+			":" __stringify(EV_KEY) ":" __stringify(KEY_SEARCH)   ":472:1000:135:60"
+			"\n");
+	} if (machine_is_msm8625q_skue()) {
+		return snprintf(buf, 200,
+			__stringify(EV_KEY) ":" __stringify(KEY_MENU)  ":90:1020:170:40"
+			":" __stringify(EV_KEY) ":" __stringify(KEY_HOME)   ":270:1020:170:40"
+			":" __stringify(EV_KEY) ":" __stringify(KEY_BACK) ":450:1020:170:40"
+			"\n");
+	} else {
+		return snprintf(buf, 200,
+			__stringify(EV_KEY) ":" __stringify(KEY_MENU)  ":40:510:80:60"
+			":" __stringify(EV_KEY) ":" __stringify(KEY_HOME)   ":120:510:80:60"
+			":" __stringify(EV_KEY) ":" __stringify(KEY_SEARCH) ":200:510:80:60"
+			":" __stringify(EV_KEY) ":" __stringify(KEY_BACK)   ":280:510:80:60"
+			"\n");
+	}
+}
+
+
+static struct kobj_attribute skud_virtual_keys_attr = {
+	.attr = {
+		.name = "virtualkeys.skud",
+		.mode = S_IRUGO,
+	},
+	.show = &skud_virtual_keys_register,
+};
+
+static struct attribute *skud_virtual_key_properties_attrs[] = {
+	&skud_virtual_keys_attr.attr,
+	NULL,
+};
+
+static struct attribute_group skud_virtual_key_properties_attr_group = {
+	.attrs =skud_virtual_key_properties_attrs,
+};
+
+struct kobject *skud_virtual_key_properties_kobj;
+
+static int virtual_key_setup(void)
+{
+	int rc=0;
+	 
+	skud_virtual_key_properties_kobj =
+			kobject_create_and_add("board_properties", NULL);
+
+	if (skud_virtual_key_properties_kobj)
+		rc = sysfs_create_group(skud_virtual_key_properties_kobj,
+				&skud_virtual_key_properties_attr_group);
+
+	if (!skud_virtual_key_properties_kobj || rc)
+		pr_err("%s: failed to create board_properties\n", __func__);
+
+	return rc;
+
+}
+//ECID[00000000]haoweiwei add end
 static void __init ft5x06_touchpad_setup(void)
 {
 	int rc;
@@ -1076,7 +1092,8 @@ static void __init ft5x06_touchpad_setup(void)
 	if (rc)
 		pr_err("%s: gpio_tlmm_config for %d failed\n",
 			__func__, ft5x06_platformdata.reset_gpio);
-
+//ECID[00000000]haoweiwei modify begin
+#if 0
 	ft5x06_virtual_key_properties_kobj =
 			kobject_create_and_add("board_properties", NULL);
 
@@ -1086,12 +1103,16 @@ static void __init ft5x06_touchpad_setup(void)
 
 	if (!ft5x06_virtual_key_properties_kobj || rc)
 		pr_err("%s: failed to create board_properties\n", __func__);
+#endif
+//ECID[00000000]haoweiwei modify end
 
 	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
 				ft5x06_device_info,
 				ARRAY_SIZE(ft5x06_device_info));
 }
-#endif
+
+
+#ifndef CONFIG_FLASH_LM3642
 /* skud flash led and touch*/
 #define FLASH_LED_SKUD 34
 #define FLASH_LED_TORCH_SKUD 48
@@ -1120,6 +1141,33 @@ static struct platform_device gpio_flash_skud = {
 	},
 };
 /* end of skud flash led and touch*/
+#endif
+
+
+/* skue flash led*/
+#define FLASH_LED_SKUE 34
+
+static struct gpio_led gpio_flash_config_skue[] = {
+        {
+                .name = "flashlight",
+                .gpio = FLASH_LED_SKUE,
+        },
+};
+
+static struct gpio_led_platform_data gpio_flash_pdata_skue = {
+        .num_leds = ARRAY_SIZE(gpio_flash_config_skue),
+        .leds = gpio_flash_config_skue,
+};
+
+static struct platform_device gpio_flash_skue = {
+        .name          = "leds-gpio",
+        .id            = -1,
+        .dev           = {
+                .platform_data = &gpio_flash_pdata_skue,
+        },
+};
+/* end of skue flash led*/
+
 
 #ifdef CONFIG_LEDS_TRICOLOR_FLAHSLIGHT
 
@@ -1201,6 +1249,7 @@ static struct platform_device kp_pdev_qrd3 = {
 	},
 };
 
+#ifdef CONFIG_LEDS_KEYBOARD_PM_MPP
 static struct pmic8029_led_platform_data leds_data_skud[] = {
 	{
 		.name = "button-backlight",
@@ -1244,7 +1293,42 @@ static struct platform_device pmic_mpp_leds_pdev = {
 		.platform_data	= &pmic8029_leds_pdata,
 	},
 };
+#endif
 
+#ifdef CONFIG_LEDS_MSM_PMIC// for enabling CONFIG_LEDS_MSM_PMIC 
+static struct platform_device msm_device_pmic_leds = {
+	.name   = "pmic-leds",
+	.id = -1,
+};
+#endif
+
+#ifdef CONFIG_LEDS_KEYBOARD_GPIO
+static struct gpio_led android_led_list[] = {
+	{
+		.name = "button-backlight",
+#if defined(CONFIG_PROJECT_P825V20)
+		.gpio = ZTE_GPIO_LEDS_KEYBOARD,
+#else
+		.gpio = 33,
+#endif
+	},
+};
+
+static struct gpio_led_platform_data android_leds_data = {
+	.num_leds	= ARRAY_SIZE(android_led_list),
+	.leds		= android_led_list,
+};
+
+static struct platform_device android_leds = {
+	.name		= "leds-gpio",
+	.id		= -1,
+	.dev		= {
+		.platform_data = &android_leds_data,
+	},
+};
+#endif
+
+#ifdef CONFIG_LEDS_MSM_TRICOLOR
 static struct led_info tricolor_led_info[] = {
 	[0] = {
 		.name           = "red",
@@ -1268,6 +1352,340 @@ static struct platform_device tricolor_leds_pdev = {
 		.platform_data  = &tricolor_led_pdata,
 	},
 };
+#endif
+
+  
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI	
+//static struct regulator *touch_vcc = NULL ;
+//static struct regulator *touch_vc = NULL;
+#define GPIO_TOUCH_RST_OUT  26 
+#define GPIO_TOUCH_IRQ_INPUT 121
+
+static int synapitcs_ts_init(struct i2c_client *client)
+{
+	return 0;
+}
+static  int ts_power_on(struct i2c_client *client, int on)
+{   
+       int ret;
+       //struct device *dev = &client->dev;
+       static bool synapitc_ts_on = false;
+       if(synapitc_ts_on == on)
+	           return 0;
+
+      if(on)
+	{
+		ret = gpio_request(GPIO_TOUCH_RST_OUT, "touch reset");
+		if (ret)
+		{	
+			printk("%s: gpio %d synapitcs request is error!\n", __func__, GPIO_TOUCH_RST_OUT);
+			return ret;
+		}   
+		ret = gpio_tlmm_config(GPIO_CFG(GPIO_TOUCH_RST_OUT, 0,
+				GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP,
+				GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		if (ret < 0) 
+		{
+			pr_err("%s: synapitcs unable to enable 2V8 gpio for TSC!\n", __func__);
+			gpio_free(GPIO_TOUCH_RST_OUT);
+			return ret;
+			//goto err_conf_gpio_reset_failed;
+		}
+
+		ret=gpio_request(GPIO_TOUCH_IRQ_INPUT, "touch irq");
+		if (ret)
+		{	
+			printk("%s: gpio %d synapitcs request is error!\n", __func__, GPIO_TOUCH_IRQ_INPUT);
+			//return ret;
+			goto err_request_qpio_irq_failed;
+		}   
+		ret=gpio_tlmm_config(GPIO_CFG(GPIO_TOUCH_IRQ_INPUT, 0,
+				GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,
+				GPIO_CFG_8MA), GPIO_CFG_ENABLE);
+		if (ret)
+		{	
+			printk("%s: gpio %d synapitcs request is error!\n", __func__, GPIO_TOUCH_IRQ_INPUT);
+			//return ret;
+			goto err_conf_qpio_irq_failed;
+		} 
+#if 0		
+		touch_vcc  = regulator_get( dev, "touch3p0"); 
+		if (IS_ERR_OR_NULL(touch_vcc)) {
+		            pr_err("%s: touch_vcc vreg get failed with : (%ld)\n",
+		                    __func__, PTR_ERR(touch_vcc));
+				//	return -1;
+				goto err_regulator_touch3p0_failed;
+		         
+		}
+		ret = regulator_set_voltage(touch_vcc, 2850000, 2850000);
+		if (ret < 0) {
+		        pr_err("%s: touch set regulator level failed with :(%d)\n",
+		                __func__, ret);
+		        //regulator_put(touch_vcc);
+			 //return -1;
+			 goto err_set_touch3p0_failed;
+		       
+		}
+
+		touch_vc = regulator_get( dev, "touch1p8"); 
+		if (IS_ERR_OR_NULL(touch_vc)) {
+		        pr_err("%s: touch_vcc vreg get failed with : (%ld)\n",
+		                __func__, PTR_ERR(touch_vc));
+				goto err_regulator_touch1p8_failed;
+		     
+		}
+		ret = regulator_set_voltage(touch_vc, 1800000, 1800000);
+		if (ret < 0) {
+		        pr_err("%s: touch set regulator level failed with :(%d)\n",
+		                __func__, ret);
+		        goto err_set_touch1p8_failed;
+		       
+		}
+#endif		
+		
+		gpio_direction_output(GPIO_TOUCH_RST_OUT, 1);
+		msleep(10);
+		printk("%s: GPIO_TOUCH_RST_OUT(%d) = %d\n", __func__, GPIO_TOUCH_RST_OUT, gpio_get_value(GPIO_TOUCH_RST_OUT));
+#if 0		
+ 		ret = regulator_enable(touch_vcc);
+   	      if (ret) 
+	      {
+            	         pr_err("%s: enable regulator failed with :(%d)\n",
+                                   __func__, ret);
+            	         //regulator_put(touch_vcc);
+			  //return -1;
+			  goto err_enabel_touch_vcc_failed;
+    		}
+    		msleep(100);
+ 		ret = regulator_enable(touch_vc);
+    	       if (ret) 
+		{
+           	           pr_err("%s: enable regulator failed with :(%d)\n",
+              	                 __func__, ret);
+            	           //regulator_put(touch_vc);
+			   //return -1;      
+			   goto err_enabel_touch_vc_failed;
+    		}
+		msleep(300);
+#endif		
+		}
+       else
+	{
+	#if 0
+		regulator_disable(touch_vcc);
+		regulator_disable(touch_vc);
+		regulator_put(touch_vcc);
+		regulator_put(touch_vc);
+    #endif		
+	       gpio_free(GPIO_TOUCH_RST_OUT);
+		gpio_free(GPIO_TOUCH_IRQ_INPUT);
+	}
+	 synapitc_ts_on  = on;
+	 return 0;
+#if 0	 	
+err_enabel_touch_vc_failed:
+err_enabel_touch_vcc_failed:
+err_set_touch1p8_failed:
+	regulator_put(touch_vc);
+err_regulator_touch1p8_failed:
+err_set_touch3p0_failed:
+	regulator_put(touch_vcc);
+err_regulator_touch3p0_failed:
+#endif
+	
+err_conf_qpio_irq_failed:
+	gpio_free(GPIO_TOUCH_IRQ_INPUT);
+err_request_qpio_irq_failed:
+	gpio_free(GPIO_TOUCH_RST_OUT);
+       
+	return -1;
+}
+ 
+ static void ts_hardware_reset(void)
+{
+	gpio_set_value(GPIO_TOUCH_RST_OUT,1);
+	gpio_set_value(GPIO_TOUCH_RST_OUT,0);
+	msleep(30);
+	gpio_set_value(GPIO_TOUCH_RST_OUT,1);
+	msleep(250);
+	printk("%s: [TPS] touch panel hareware reset !\n", __func__);
+}
+
+static struct synaptics_ts_platform_data synaptics_ts_pdata = {
+	.power_on = &ts_power_on,
+	.reset = &ts_hardware_reset,
+	.init_platform_hw = &synapitcs_ts_init,
+};
+	
+#endif
+
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_NEW
+static int ft5x0x_ts_init(struct i2c_client *client)
+{
+	return 0;
+}
+static  int fts_power_on(struct i2c_client *client,int on)
+{   
+       int ret;
+	//struct device *dev = &client->dev;
+       static bool synapitc_ts_on = false;
+       if(synapitc_ts_on == on)
+	           return 0;
+
+      if(on)
+	{
+		ret = gpio_request(GPIO_TOUCH_RST_OUT, "touch reset");
+		if (ret)
+		{	
+			printk("%s: gpio %d synapitcs request is error!\n", __func__, GPIO_TOUCH_RST_OUT);
+			return ret;
+		}   
+		ret = gpio_tlmm_config(GPIO_CFG(GPIO_TOUCH_RST_OUT, 0,
+				GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP,
+				GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+		if (ret < 0) 
+		{
+			pr_err("%s: synapitcs unable to enable 2V8 gpio for TSC!\n", __func__);
+			gpio_free(GPIO_TOUCH_RST_OUT);
+			return ret;
+			//goto err_conf_gpio_reset_failed;
+		}
+
+		ret=gpio_request(GPIO_TOUCH_IRQ_INPUT, "touch irq");
+		if (ret)
+		{	
+			printk("%s: gpio %d synapitcs request is error!\n", __func__, GPIO_TOUCH_IRQ_INPUT);
+			//return ret;
+			goto err_request_qpio_irq_failed;
+		}   
+		ret=gpio_tlmm_config(GPIO_CFG(GPIO_TOUCH_IRQ_INPUT, 0,
+				GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,
+				GPIO_CFG_8MA), GPIO_CFG_ENABLE);
+		if (ret)
+		{	
+			printk("%s: gpio %d synapitcs request is error!\n", __func__, GPIO_TOUCH_IRQ_INPUT);
+			//return ret;
+			goto err_conf_qpio_irq_failed;
+		} 
+#if 0		
+		touch_vcc  = regulator_get( dev, "touch3p0"); 
+		if (IS_ERR_OR_NULL(touch_vcc)) {
+		            pr_err("%s: touch_vcc vreg get failed with : (%ld)\n",
+		                    __func__, PTR_ERR(touch_vcc));
+				//	return -1;
+				goto err_regulator_touch3p0_failed;
+		         
+		}
+		ret = regulator_set_voltage(touch_vcc, 2850000, 2850000);
+		if (ret < 0) {
+		        pr_err("%s: touch set regulator level failed with :(%d)\n",
+		                __func__, ret);
+		        //regulator_put(touch_vcc);
+			 //return -1;
+			 goto err_set_touch3p0_failed;
+		       
+		}
+
+		touch_vc = regulator_get( dev, "touch1p8"); 
+		if (IS_ERR_OR_NULL(touch_vc)) {
+		        pr_err("%s: touch_vcc vreg get failed with : (%ld)\n",
+		                __func__, PTR_ERR(touch_vc));
+				goto err_regulator_touch1p8_failed;
+		     
+		}
+		ret = regulator_set_voltage(touch_vc, 1800000, 1800000);
+		if (ret < 0) {
+		        pr_err("%s: touch set regulator level failed with :(%d)\n",
+		                __func__, ret);
+		        goto err_set_touch1p8_failed;
+		       
+		}
+#endif		
+		
+		
+		gpio_direction_output(GPIO_TOUCH_RST_OUT, 1);
+		msleep(10);
+		printk("%s: GPIO_TOUCH_RST_OUT(%d) = %d\n", __func__, GPIO_TOUCH_RST_OUT, gpio_get_value(GPIO_TOUCH_RST_OUT));
+#if 0		
+ 		ret = regulator_enable(touch_vcc);
+   	      if (ret) 
+	      {
+            	         pr_err("%s: enable regulator failed with :(%d)\n",
+                                   __func__, ret);
+            	         //regulator_put(touch_vcc);
+			  //return -1;
+			  goto err_enabel_touch_vcc_failed;
+    		}
+    		msleep(100);
+ 		ret = regulator_enable(touch_vc);
+    	       if (ret) 
+		{
+           	           pr_err("%s: enable regulator failed with :(%d)\n",
+              	                 __func__, ret);
+            	           //regulator_put(touch_vc);
+			   //return -1;      
+			   goto err_enabel_touch_vc_failed;
+    		}
+#endif			   
+		msleep(300);
+		}
+       else
+	{
+	#if 0
+		regulator_disable(touch_vcc);
+		regulator_disable(touch_vc);
+		regulator_put(touch_vcc);
+		regulator_put(touch_vc);
+   #endif		
+	       gpio_free(GPIO_TOUCH_RST_OUT);
+		gpio_free(GPIO_TOUCH_IRQ_INPUT);
+	}
+	 synapitc_ts_on  = on;
+	 return 0;
+#if 0	 	
+err_enabel_touch_vc_failed:
+err_enabel_touch_vcc_failed:
+err_set_touch1p8_failed:
+	regulator_put(touch_vc);
+err_regulator_touch1p8_failed:
+err_set_touch3p0_failed:
+	regulator_put(touch_vcc);
+err_regulator_touch3p0_failed:
+#endif	
+err_conf_qpio_irq_failed:
+	gpio_free(GPIO_TOUCH_IRQ_INPUT);
+err_request_qpio_irq_failed:
+	gpio_free(GPIO_TOUCH_RST_OUT);
+       
+	return -1;
+}
+ 
+ static struct ft5x0x_ts_platform_data ft5x0x_ts_pdata ={
+	.power_on = &fts_power_on,
+	.init_platform_hw = &ft5x0x_ts_init,
+ };
+#endif
+
+static struct i2c_board_info i2c_touch_devices[] = {
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_NEW		
+	{		
+	  I2C_BOARD_INFO("ft5x0x_ts", 0x3E),
+	  .platform_data = &ft5x0x_ts_pdata, 
+	  .irq          = MSM_GPIO_TO_INT(GPIO_TOUCH_IRQ_INPUT),	
+
+			
+	},	
+#endif
+
+#ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI		
+	{	
+		I2C_BOARD_INFO("synaptics-rmi-ts", 0x22),
+		 .platform_data = &synaptics_ts_pdata,
+		.irq          = MSM_GPIO_TO_INT(GPIO_TOUCH_IRQ_INPUT),
+	},
+#endif
+};
+/* lizhenhua end */
 
 void __init msm7627a_add_io_devices(void)
 {
@@ -1351,23 +1769,74 @@ void __init qrd7627a_add_io_devices(void)
 		i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
 					mxt_device_info,
 					ARRAY_SIZE(mxt_device_info));
-	} else if (machine_is_msm7627a_qrd3() || machine_is_msm8625_qrd7() || machine_is_msm8625q_skud()) {
-
-
-#ifdef CONFIG_HW_ALASKA
+	} else if (machine_is_msm7627a_qrd3() || machine_is_msm8625_qrd7()
+				|| machine_is_msm8625q_skud()
+				|| machine_is_msm8625q_evbd()
+				|| machine_is_msm8625q_skue()) {
 		ft5x06_touchpad_setup();
-#endif
+		/* evbd+ can support synaptic as well */
+		if (machine_is_msm8625q_evbd() &&
+			(socinfo_get_platform_type() == 0x13)) {
+			/* for QPR EVBD+ with synaptic touch panel */
+			/* TODO: Add  gpio request to the driver
+				to support proper dynamic touch detection */
+			gpio_tlmm_config(
+				GPIO_CFG(CLEARPAD3000_ATTEN_GPIO_EVBD_PLUS, 0,
+				GPIO_CFG_INPUT, GPIO_CFG_NO_PULL,
+				GPIO_CFG_8MA), GPIO_CFG_ENABLE);
+
+			gpio_tlmm_config(
+				GPIO_CFG(CLEARPAD3000_RESET_GPIO, 0,
+				GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN,
+				GPIO_CFG_8MA), GPIO_CFG_ENABLE);
+
+			gpio_set_value(CLEARPAD3000_RESET_GPIO, 0);
+			usleep(10000);
+			gpio_set_value(CLEARPAD3000_RESET_GPIO, 1);
+			usleep(50000);
+
+			i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
+				rmi4_i2c_devices,
+				ARRAY_SIZE(rmi4_i2c_devices));
+		}
+		else {
+			if (machine_is_msm8625q_evbd()) {
+				mxt_config_array[0].config = mxt_config_data;
+				mxt_config_array[0].config_length =
+				ARRAY_SIZE(mxt_config_data);
+				mxt_platform_data.panel_maxy = 875;
+				mxt_platform_data.need_calibration = true;
+				mxt_platform_data.irq_gpio = MXT_TS_EVBD_IRQ_GPIO;
+				mxt_vkey_setup();
+
+			rc = gpio_tlmm_config(GPIO_CFG(MXT_TS_EVBD_IRQ_GPIO, 0,
+						GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,
+						GPIO_CFG_8MA), GPIO_CFG_ENABLE);
+			if (rc) {
+				pr_err("%s: gpio_tlmm_config for %d failed\n",
+						__func__, MXT_TS_EVBD_IRQ_GPIO);
+			}
+
+			rc = gpio_tlmm_config(GPIO_CFG(MXT_TS_RESET_GPIO, 0,
+						GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN,
+						GPIO_CFG_8MA), GPIO_CFG_ENABLE);
+			if (rc) {
+				pr_err("%s: gpio_tlmm_config for %d failed\n",
+						__func__, MXT_TS_RESET_GPIO);
+			}
+
+			i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
+				mxt_device_info,
+				ARRAY_SIZE(mxt_device_info));
+			}
+		 }
+        virtual_key_setup();
+
+	i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
+	          i2c_touch_devices,ARRAY_SIZE(i2c_touch_devices));
+	printk("touch i2c register end\n");
+
 	}
-#if defined(CONFIG_HW_ARUBA)||defined(CONFIG_HW_ANDORRA)||defined(CONFIG_HW_ANDORRAP)
-		syna_rmi4_touchpannel_setup();
-#endif
-
-#if defined(CONFIG_HW_SICILY)||defined(CONFIG_HW_ARMANI)||defined(CONFIG_HW_AUDI)||defined(CONFIG_HW_ATHENAE)
-		i2c_register_board_info(MSM_GSBI1_QUP_I2C_BUS_ID,
-					ft5x0x_device_info,
-					ARRAY_SIZE(ft5x0x_device_info));
-
-#endif
 
 	/* headset */
 	platform_device_register(&hs_pdev);
@@ -1411,13 +1880,44 @@ void __init qrd7627a_add_io_devices(void)
 	/* leds */
 	if (machine_is_msm7627a_evb() || machine_is_msm8625_evb()
             || machine_is_msm8625_qrd5() || machine_is_msm7x27a_qrd5a()) {
-
+		#ifdef CONFIG_LEDS_KEYBOARD_PM_MPP
+		//printk(KERN_NOTICE "PM_DEBUG_MXP:Going to register mpp leds dev.\r\n");
 		platform_device_register(&pmic_mpp_leds_pdev);
-		platform_device_register(&tricolor_leds_pdev);
+		#endif
+
+		#ifdef CONFIG_LEDS_MSM_PMIC
+		//printk(KERN_NOTICE "PM_DEBUG_MXP:Going to register pmic leds dev.\r\n");
+		platform_device_register(&msm_device_pmic_leds);//pmic_leds_dev(sig leds)
+		#endif
+		
+		#ifdef CONFIG_LEDS_KEYBOARD_GPIO
+		//printk(KERN_NOTICE "PM_DEBUG_MXP:Going to register keyboard gpio leds dev.\r\n");
+		platform_device_register(&android_leds);//gpio_leds_dev(keyboard leds)
+		#endif
+		
+		#ifdef CONFIG_LEDS_MSM_TRICOLOR
+		platform_device_register(&tricolor_leds_pdev);//not set on 8x25Q
+		#endif
 	} else if (machine_is_msm8625q_skud() || machine_is_msm8625q_evbd()) {
+		#ifdef CONFIG_LEDS_KEYBOARD_PM_MPP
 		platform_device_register(&pmic_mpp_leds_pdev_skud);
+		#endif
+
+		#ifdef CONFIG_LEDS_MSM_PMIC
+		platform_device_register(&msm_device_pmic_leds);//pmic_leds_dev(sig leds)
+		#endif
+		
+		#ifdef CONFIG_LEDS_KEYBOARD_GPIO
+		platform_device_register(&android_leds);//gpio_leds_dev(keyboard leds)
+		#endif
+		
 		/* enable the skud flash and torch by gpio leds driver */
+#ifndef CONFIG_FLASH_LM3642
 		platform_device_register(&gpio_flash_skud);
+#endif
+	} else if (machine_is_msm8625q_skue()) {
+		 /* enable the skue flashlight by gpio leds driver */
+                platform_device_register(&gpio_flash_skue);
 	}
 
 #ifdef CONFIG_LEDS_TRICOLOR_FLAHSLIGHT

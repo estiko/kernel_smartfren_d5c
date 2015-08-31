@@ -105,4 +105,3 @@ struct Upgrade_Info {
 #endif /*!FT5X0X_CREATE_APK_DEBUG_CHANNEL*/
 
 #endif
-#define FT5X0X_NAME "qwerty"
